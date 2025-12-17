@@ -153,6 +153,13 @@ func quit(gs *GameState) string {
 func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 	cmd = strings.TrimSpace(cmd)
 
+	// Normalize common castling notations that users might try:
+	// convert zeroes and lowercase 'o' to uppercase 'O' so that
+	// inputs like "0-0", "0-0-0", "o-o", and "o-o-o" are accepted.
+	// This does not affect standard algebraic moves.
+	cmd = strings.ReplaceAll(cmd, "0", "O")
+	cmd = strings.ReplaceAll(cmd, "o", "O")
+
 	switch cmd {
 	// Back one turn
 	case "back":
@@ -179,7 +186,9 @@ func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 		return quit(gs), gs.Game
 	default:
 		if err := gs.Game.MoveStr(cmd); err != nil {
-			return "\u26A0 Illegal. Try again.", gs.Game
+			// Surface the underlying error from the chess engine so users
+			// can understand *why* a move (including castling) is illegal.
+			return "\u26A0 Illegal: " + err.Error(), gs.Game
 		}
 	}
 
