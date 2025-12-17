@@ -11,6 +11,9 @@ install: tidy
 tidy:
 	$(GO_BIN) mod tidy -v
 
+test:
+	$(GO_BIN) test ./...
+
 build: tidy
 	cd cmd/uchess && $(GO_BIN) build -v .
 	make tidy
