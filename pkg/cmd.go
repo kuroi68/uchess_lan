@@ -66,7 +66,12 @@ func EngMove(game *chess.Game, us UCIState, config Config) string {
 	if err := game.Move(move); err != nil {
 		return "\u26A0 Error. Engine move."
 	}
-	// Clear the label
+	// If this is a CPU vs CPU match and the game has just finished,
+	// automatically save the PGN so it can be analyzed later.
+	if !IsInteractive(config) && game.Outcome() != "*" {
+		return saveGame(game)
+	}
+	// Clear the label for normal interactive play
 	return strings.Repeat(" ", 32)
 }
 
