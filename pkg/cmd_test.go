@@ -1,6 +1,8 @@
 package uchess
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -103,6 +105,58 @@ func TestProcessCmdCastlingUserReport(t *testing.T) {
 	last := gameMoves[len(gameMoves)-1]
 	if !last.HasTag(chess.KingSideCastle) {
 		t.Fatalf("expected last move to be kingside castle, got %v", last)
+	}
+}
+
+// TestSaveGameWritesPgnFile verifies that SaveGame writes the game as a .pgn
+// file (so it opens in third-party analysis tools) containing the PGN moves.
+func TestSaveGameWritesPgnFile(t *testing.T) {
+	dir := t.TempDir()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer os.Chdir(wd)
+
+	game := chess.NewGame()
+	for _, mv := range []string{"e4", "e5"} {
+		move, err := chess.AlgebraicNotation{}.Decode(game.Position(), mv)
+		if err != nil {
+			t.Fatalf("decode %q: %v", mv, err)
+		}
+		if err := game.Move(move, nil); err != nil {
+			t.Fatalf("apply %q: %v", mv, err)
+		}
+	}
+
+	msg := SaveGame(game)
+	if !strings.HasPrefix(msg, "Saved ") {
+		t.Fatalf("expected a save confirmation, got %q", msg)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("readdir: %v", err)
+	}
+	var pgnFile string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".pgn") {
+			pgnFile = e.Name()
+		}
+	}
+	if pgnFile == "" {
+		t.Fatalf("expected a .pgn file to be created, got entries %v", entries)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, pgnFile))
+	if err != nil {
+		t.Fatalf("read pgn: %v", err)
+	}
+	if !strings.Contains(string(data), "e4") {
+		t.Fatalf("expected PGN move text in saved file, got %q", string(data))
 	}
 }
 

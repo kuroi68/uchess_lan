@@ -69,7 +69,7 @@ func EngMove(game *chess.Game, us UCIState, config Config) string {
 	// If this is a CPU vs CPU match and the game has just finished,
 	// automatically save the PGN so it can be analyzed later.
 	if !IsInteractive(config) && game.Outcome() != "*" {
-		return saveGame(game)
+		return SaveGame(game)
 	}
 	// Clear the label for normal interactive play
 	return strings.Repeat(" ", 32)
@@ -90,9 +90,11 @@ func resetGame(game *chess.Game) *chess.Game {
 	return newGame
 }
 
-func saveGame(game *chess.Game) string {
+// SaveGame writes the game's PGN to a timestamped .pgn file so it can be
+// opened directly in third-party analysis tools. Returns a status label.
+func SaveGame(game *chess.Game) string {
 	ts := Timestamp()
-	file := fmt.Sprintf("uchess_%v.txt", ts)
+	file := fmt.Sprintf("uchess_%v.pgn", ts)
 	f, err := os.Create(file)
 	defer f.Close()
 
@@ -171,7 +173,7 @@ func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 		return strings.Repeat(" ", 80), undoMove(gs.Game)
 		// Save the PGN string
 	case "save":
-		return saveGame(gs.Game), gs.Game
+		return SaveGame(gs.Game), gs.Game
 		// SVG snapshot of the current board
 	case "image":
 		return saveImage(gs.Game), gs.Game

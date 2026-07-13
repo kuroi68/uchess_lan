@@ -88,6 +88,12 @@ func setChecks(gs *uchess.GameState) {
 }
 
 func Quit(gs *uchess.GameState) {
+	// In an engine vs engine game the shell accepts no commands, so a game in
+	// progress would otherwise be lost on quit. Auto-save its PGN first.
+	// Completed games are already saved by EngMove when they reach an outcome.
+	if !uchess.IsInteractive(gs.Config) && gs.Game.Outcome() == "*" {
+		uchess.SaveGame(gs.Game)
+	}
 	gs.S.Fini()
 	os.Exit(0)
 }
