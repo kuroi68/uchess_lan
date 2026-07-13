@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
+	"github.com/corentings/chess/v2"
 	"github.com/gdamore/tcell/v2"
-	"github.com/notnil/chess"
 	uchess "github.com/tmountain/uchess/pkg"
 )
 

@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/notnil/chess"
+	"github.com/corentings/chess/v2"
 )
 
 func TestIsInteractive(t *testing.T) {

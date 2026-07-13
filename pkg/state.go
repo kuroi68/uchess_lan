@@ -1,8 +1,8 @@
 package uchess
 
 import (
+	"github.com/corentings/chess/v2"
 	"github.com/gdamore/tcell/v2"
-	"github.com/notnil/chess"
 )
 
 // GameState encapsulates everything needed to run the game

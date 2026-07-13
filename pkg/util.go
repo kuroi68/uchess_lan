@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/notnil/chess"
+	"github.com/corentings/chess/v2"
 )
 
 // getSquare returns a chess square given a file and a rank

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/notnil/chess"
+	"github.com/corentings/chess/v2"
 )
 
 // newTestGameState returns a minimal GameState suitable for testing ProcessCmd.
@@ -64,7 +64,12 @@ func TestProcessCmdCastlingUserReport(t *testing.T) {
 	}
 
 	for _, mv := range moves {
-		if err := gs.Game.MoveStr(mv); err != nil {
+		pos := gs.Game.Position()
+		move, err := chess.AlgebraicNotation{}.Decode(pos, mv)
+		if err != nil {
+			t.Fatalf("failed to decode move %q: %v", mv, err)
+		}
+		if err := gs.Game.Move(move, nil); err != nil {
 			t.Fatalf("failed to apply move %q: %v", mv, err)
 		}
 	}

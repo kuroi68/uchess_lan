@@ -301,7 +301,7 @@ are subject to change. Efforts will be made to keep the config file and
 theme format stable going forward to the extent that it is practical to do so.
 
 ### Special Thanks
-**uchess** depends on the [notnil/chess](https://github.com/notnil/chess),
+**uchess** depends on the [corentings/chess](https://github.com/corentings/chess),
 and [gdamore/tcell](https://github.com/gdamore/tcell) modules.
 Many thanks to the maintainers.
 

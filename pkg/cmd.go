@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/notnil/chess"
-	"github.com/notnil/chess/image"
-	"github.com/notnil/chess/uci"
+	"github.com/corentings/chess/v2"
+	"github.com/corentings/chess/v2/image"
+	"github.com/corentings/chess/v2/uci"
 )
 
 // selectEngine returns the UCI engine and its corresponding config based upon the current turn
@@ -63,7 +63,7 @@ func EngMove(game *chess.Game, us UCIState, config Config) string {
 	// Fetch the results
 	move := eng.SearchResults().BestMove
 	// Validate the move
-	if err := game.Move(move); err != nil {
+	if err := game.Move(move, nil); err != nil {
 		return "\u26A0 Error. Engine move."
 	}
 	// If this is a CPU vs CPU match and the game has just finished,
@@ -80,7 +80,7 @@ func undoMove(game *chess.Game) *chess.Game {
 	moves := game.Moves()
 	for i := 0; i < len(moves)-2; i++ {
 		move := moves[i]
-		newGame.Move(move)
+		newGame.Move(move, nil)
 	}
 	return newGame
 }
@@ -190,9 +190,15 @@ func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 	case "quit":
 		return quit(gs), gs.Game
 	default:
-		if err := gs.Game.MoveStr(cmd); err != nil {
+		// Decode the move string and apply it
+		pos := gs.Game.Position()
+		move, err := chess.AlgebraicNotation{}.Decode(pos, cmd)
+		if err != nil {
 			// Surface the underlying error from the chess engine so users
 			// can understand *why* a move (including castling) is illegal.
+			return "\u26A0 Illegal: " + err.Error(), gs.Game
+		}
+		if err := gs.Game.Move(move, nil); err != nil {
 			return "\u26A0 Illegal: " + err.Error(), gs.Game
 		}
 	}

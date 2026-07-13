@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/notnil/chess/uci"
+	"github.com/corentings/chess/v2/uci"
 )
 
 // Option allows arbitrary UCI options to be sent

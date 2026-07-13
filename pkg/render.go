@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/corentings/chess/v2"
 	"github.com/gdamore/tcell/v2"
-	"github.com/notnil/chess"
 )
 
 const (
