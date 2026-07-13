@@ -23,7 +23,7 @@ clean:
 	rm -rf dist
 
 release:
-	rm -rf dist && goreleaser
+	goreleaser release --clean
 
 release_test:
-	rm -rf dist && goreleaser --snapshot --skip-publish --rm-dist
+	goreleaser release --snapshot --skip=publish --clean

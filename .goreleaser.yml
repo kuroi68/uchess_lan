@@ -1,11 +1,14 @@
-# This is an example .goreleaser.yml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
+# GoReleaser configuration (schema version 2).
+# Docs: https://goreleaser.com
+version: 2
+
 before:
   hooks:
-    # You may remove this if you don't use go modules.
+    # Remove this if you don't use go modules.
     - go mod download
-    # you may remove this if you don't need go generate
+    # Remove this if you don't need go generate.
     - go generate ./...
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -18,19 +21,24 @@ builds:
       - amd64
       - arm
     goarm:
-      - 5
+      - "5"
+
 archives:
-  - replacements:
-      darwin: osx
-      linux: linux
-      windows: windows
-      386: i386
-      amd64: x86_64
-    format: binary
+  - format: binary
+    # v2 removed the `replacements` key. Reproduce the legacy asset naming
+    # (darwin -> osx, amd64 -> x86_64, 386 -> i386) with a name template.
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}osx{{ else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64{{ else if eq .Arch "386" }}i386{{ else }}{{ .Arch }}{{ end }}
+      {{- with .Arm }}v{{ . }}{{ end }}
+
 checksum:
   name_template: 'checksums.txt'
+
 snapshot:
   name_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   filters:
