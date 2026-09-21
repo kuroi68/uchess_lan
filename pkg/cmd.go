@@ -109,11 +109,12 @@ func saveImage(game *chess.Game) string {
 	ts := Timestamp()
 	file := fmt.Sprintf("uchess_%v.svg", ts)
 	f, err := os.Create(file)
-	defer f.Close()
 
 	if err != nil {
 		return err.Error()
 	}
+
+	defer f.Close()
 
 	board := game.Position().Board()
 	if err := image.SVG(f, board); err != nil {
@@ -156,6 +157,10 @@ func quit(gs *GameState) string {
 	return "quit"
 }
 
+func online(gs *GameState) string {
+	return "online"
+}
+
 // ProcessCmd processes a move request or command
 func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 	cmd = strings.TrimSpace(cmd)
@@ -188,10 +193,16 @@ func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 		return strings.Repeat(" ", 80), resign(gs.Game)
 		// Process a move string
 	case "hint":
-		return hint(gs), gs.Game
-	case "quit":
+		if !gs.Online.Enabled {
+			return hint(gs), gs.Game
+		}
+		return "\u26A0 Illegal: Hints are not available online", gs.Game
+	case "quit": // TODO: грамотно выходить из игры в онлайне
 		return quit(gs), gs.Game
-	default:
+		// Online game
+	case "online":
+		return online(gs), gs.Game
+	default: // TODO: в онлайне после совершения хода отправлять gameState противнику
 		// Decode the move string and apply it
 		pos := gs.Game.Position()
 		move, err := chess.AlgebraicNotation{}.Decode(pos, cmd)
@@ -203,6 +214,7 @@ func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 		if err := gs.Game.Move(move, nil); err != nil {
 			return "\u26A0 Illegal: " + err.Error(), gs.Game
 		}
+		fmt.Println("Ход совершен")
 	}
 
 	// Clear the label

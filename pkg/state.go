@@ -17,4 +17,15 @@ type GameState struct {
 	CheckWhite bool         // White is in check
 	CheckBlack bool         // Black is in check
 	Hint       *chess.Move  // Hint when available
+	Online     OnlineState  // Online
+}
+
+// OnlineState encapsulates online game settings
+// TODO: переписать пояснения к полям
+type OnlineState struct {
+	Enabled   bool        // Online is active
+	Connected bool        // User is connected
+	IsHost    bool        // Local pc is the host
+	PeerAddr  string      // Address of opponent
+	LocalSide chess.Color // Local color of the chess pieces
 }

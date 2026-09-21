@@ -4,7 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 )
@@ -130,7 +130,7 @@ func ConfigJSON(config Config) string {
 
 // ReadConfig reads the specified JSON file into a config struct
 func ReadConfig(file string) Config {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		panic(err)
 	}

@@ -66,10 +66,16 @@ func Init() Config {
 		os.Exit(0)
 	}
 
-	if (*white != "human" && *white != "cpu") ||
-		(*black != "human" && *black != "cpu") {
+	if *white != "human" && *white != "cpu" {
+		fmt.Fprintf(os.Stderr, "invalid -white value %q: expected human or cpu\n", *white)
 		flag.PrintDefaults()
-		os.Exit(0)
+		os.Exit(2)
+	}
+
+	if *black != "human" && *black != "cpu" {
+		fmt.Fprintf(os.Stderr, "invalid -black value %q: expected human or cpu\n", *black)
+		flag.PrintDefaults()
+		os.Exit(2)
 	}
 
 	// Load config file if provided

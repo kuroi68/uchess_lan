@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/corentings/chess/v2"
@@ -9,6 +10,14 @@ import (
 )
 
 func main() {
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	log.SetOutput(file)
+
 	// Game state
 	var gs uchess.GameState
 	// Init via flags
@@ -133,10 +142,11 @@ func Interact(gs *uchess.GameState) bool {
 				uchess.DrawMsgLabel(gs.S, msg, gs.Theme)
 				// Command quit and game state shutdown are handled in uchess package
 				// Handle the actual process exit here in the main package
-				if msg == "quit" {
+				switch msg {
+				case "quit":
 					// Quit the app
 					gs.Input.Clear()
-					uchess.DrawMsgLabel(gs.S, "Press y to confirm quit", gs.Theme)
+					uchess.DrawMsgLabel(gs.S, "Press 'y to confirm quit", gs.Theme)
 					uchess.Render(gs)
 					// Poll a single event to confirm
 					confirm := gs.S.PollEvent()
@@ -147,6 +157,22 @@ func Interact(gs *uchess.GameState) bool {
 							switch confirm.Rune() {
 							case 'Y', 'y':
 								Quit(gs)
+							}
+						}
+					}
+				case "online":
+					uchess.DrawMsgLabel(gs.S, "Press 'h' to host or 'c' to connect ", gs.Theme)
+					uchess.Render(gs)
+					confirm := gs.S.PollEvent()
+					switch confirm := confirm.(type) {
+					case *tcell.EventKey:
+						switch confirm.Key() {
+						case tcell.KeyRune:
+							switch confirm.Rune() {
+							case 'H', 'h':
+								startHost(gs)
+							case 'C', 'c':
+								connectToHost(gs)
 							}
 						}
 					}
