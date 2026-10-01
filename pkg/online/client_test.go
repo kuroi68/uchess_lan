@@ -2,7 +2,6 @@
 package online
 
 import (
-	"io"
 	"net"
 	"testing"
 	"time"
@@ -22,9 +21,9 @@ func TestConnectSendsOverRealTCP(t *testing.T) {
 			return
 		}
 		defer conn.Close()
-		buf := make([]byte, 4)
-		n, _ := io.ReadFull(conn, buf)
-		received <- buf[:n]
+		serverSession := newSession(conn)
+		buf, _ := serverSession.Receive()
+		received <- buf
 	}()
 
 	sess, err := Connect(ln.Addr().String())
