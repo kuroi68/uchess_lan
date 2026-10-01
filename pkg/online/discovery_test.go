@@ -46,3 +46,38 @@ func TestDiscover(t *testing.T) {
 			expected.Name, servers[0].Name)
 	}
 }
+
+func TestListenBroadcastReturnsFirstServerImmediately(t *testing.T) {
+	expected := ServerInfo{Name: "server-1", Port: ":8080"}
+	serverConn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		t.Fatalf("failed to create server socket: %v", err)
+	}
+	defer serverConn.Close()
+
+	go func() {
+		_ = broadcastReturn(expected, serverConn)
+	}()
+
+	serverAddr := serverConn.LocalAddr().(*net.UDPAddr)
+	clientConn, err := sendDiscoveryRequest(&net.UDPAddr{
+		IP:   net.IPv4(127, 0, 0, 1),
+		Port: serverAddr.Port,
+	})
+	if err != nil {
+		t.Fatalf("failed to send discovery request: %v", err)
+	}
+	defer clientConn.Close()
+
+	started := time.Now()
+	servers, err := listenBroadcastReturns(clientConn, 5*time.Second, true)
+	if err != nil {
+		t.Fatalf("failed to receive discovery response: %v", err)
+	}
+	if elapsed := time.Since(started); elapsed >= time.Second {
+		t.Fatalf("discovery took %v after first response", elapsed)
+	}
+	if len(servers) != 1 || servers[0].Name != expected.Name {
+		t.Fatalf("got servers %+v, want first server %+v", servers, expected)
+	}
+}

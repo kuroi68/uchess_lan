@@ -43,6 +43,71 @@ func TestProcessCmdReturnsDetailedIllegalMessage(t *testing.T) {
 	}
 }
 
+func TestProcessCmdRecognizesOnlineCommand(t *testing.T) {
+	gs := newTestGameState()
+
+	msg, game := ProcessCmd("online", gs)
+
+	if msg != "online" {
+		t.Fatalf("ProcessCmd(online) message = %q, want %q", msg, "online")
+	}
+	if game != gs.Game {
+		t.Fatal("ProcessCmd(online) should preserve the current game")
+	}
+}
+
+func TestProcessMoveAppliesAlgebraicMove(t *testing.T) {
+	gs := newTestGameState()
+
+	msg, game := ProcessMove("e4", gs)
+
+	if strings.TrimSpace(msg) != "" {
+		t.Fatalf("expected empty/cleared message after a legal move, got %q", msg)
+	}
+	if len(game.Moves()) != 1 {
+		t.Fatalf("expected one move after ProcessMove, got %d", len(game.Moves()))
+	}
+}
+
+func TestProcessCmdBlocksOnlineMovesUntilLocalTurn(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func(*GameState)
+		want    string
+	}{
+		{
+			name: "while connecting",
+			prepare: func(gs *GameState) {
+				gs.Online.Enabled = true
+			},
+			want: "Waiting for opponent to connect",
+		},
+		{
+			name: "opponent turn",
+			prepare: func(gs *GameState) {
+				gs.Online.Enabled = true
+				gs.Online.Connected = true
+				gs.Online.LocalSide = chess.Black
+			},
+			want: "Waiting for opponent's move",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gs := newTestGameState()
+			tt.prepare(gs)
+			msg, game := ProcessCmd("e4", gs)
+			if msg != tt.want {
+				t.Fatalf("ProcessCmd(e4) message = %q, want %q", msg, tt.want)
+			}
+			if game != gs.Game || len(game.Moves()) != 0 {
+				t.Fatal("move should not be applied while waiting")
+			}
+		})
+	}
+}
+
 // TestProcessCmdCastlingUserReport reproduces the position reported in
 // GitHub issue #3 where the user attempted to castle with "0-0".
 // This ensures we handle the input safely and surface a clear message.
@@ -159,6 +224,3 @@ func TestSaveGameWritesPgnFile(t *testing.T) {
 		t.Fatalf("expected PGN move text in saved file, got %q", string(data))
 	}
 }
-
-
-

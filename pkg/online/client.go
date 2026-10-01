@@ -41,6 +41,10 @@ func SendBroadcast() (*net.UDPConn, error) {
 }
 
 func ListenBroadcastReturns(conn *net.UDPConn, timeout time.Duration) ([]ServerInfo, error) {
+	return listenBroadcastReturns(conn, timeout, false)
+}
+
+func listenBroadcastReturns(conn *net.UDPConn, timeout time.Duration, firstOnly bool) ([]ServerInfo, error) {
 	err := conn.SetReadDeadline(time.Now().Add(timeout))
 	if err != nil {
 		return nil, fmt.Errorf("set deadline: %w", err)
@@ -76,16 +80,27 @@ func ListenBroadcastReturns(conn *net.UDPConn, timeout time.Duration) ([]ServerI
 
 		server.Port = net.JoinHostPort(host, port)
 		servers = append(servers, server)
+		if firstOnly {
+			return servers, nil
+		}
 	}
 }
 
 func Discover(timeout time.Duration) ([]ServerInfo, error) {
+	return discover(timeout, false)
+}
+
+func DiscoverFirst(timeout time.Duration) ([]ServerInfo, error) {
+	return discover(timeout, true)
+}
+
+func discover(timeout time.Duration, firstOnly bool) ([]ServerInfo, error) {
 	conn, err := SendBroadcast()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	servers, err := ListenBroadcastReturns(conn, timeout)
+	servers, err := listenBroadcastReturns(conn, timeout, firstOnly)
 	if err != nil {
 		return nil, err
 	}

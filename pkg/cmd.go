@@ -165,13 +165,6 @@ func online(gs *GameState) string {
 func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 	cmd = strings.TrimSpace(cmd)
 
-	// Normalize common castling notations that users might try:
-	// convert zeroes and lowercase 'o' to uppercase 'O' so that
-	// inputs like "0-0", "0-0-0", "o-o", and "o-o-o" are accepted.
-	// This does not affect standard algebraic moves.
-	cmd = strings.ReplaceAll(cmd, "0", "O")
-	cmd = strings.ReplaceAll(cmd, "o", "O")
-
 	switch cmd {
 	// Back one turn
 	case "back":
@@ -202,21 +195,31 @@ func ProcessCmd(cmd string, gs *GameState) (string, *chess.Game) {
 		// Online game
 	case "online":
 		return online(gs), gs.Game
-	default: // TODO: в онлайне после совершения хода отправлять gameState противнику
-		// Decode the move string and apply it
-		pos := gs.Game.Position()
-		move, err := chess.AlgebraicNotation{}.Decode(pos, cmd)
-		if err != nil {
-			// Surface the underlying error from the chess engine so users
-			// can understand *why* a move (including castling) is illegal.
-			return "\u26A0 Illegal: " + err.Error(), gs.Game
+	default:
+		if gs.Online.Enabled && !gs.Online.Connected {
+			return "Waiting for opponent to connect", gs.Game
 		}
-		if err := gs.Game.Move(move, nil); err != nil {
-			return "\u26A0 Illegal: " + err.Error(), gs.Game
+		if gs.Online.Connected && gs.Game.Position().Turn() != gs.Online.LocalSide {
+			return "Waiting for opponent's move", gs.Game
 		}
-		fmt.Println("Ход совершен")
+		return ProcessMove(cmd, gs)
 	}
+}
 
-	// Clear the label
+// ProcessMove applies a single algebraic chess move to the current game.
+func ProcessMove(cmd string, gs *GameState) (string, *chess.Game) {
+	cmd = strings.TrimSpace(cmd)
+	cmd = strings.ReplaceAll(cmd, "0", "O")
+	cmd = strings.ReplaceAll(cmd, "o", "O")
+
+	pos := gs.Game.Position()
+	move, err := chess.AlgebraicNotation{}.Decode(pos, cmd)
+	if err != nil {
+		return "\u26A0 Illegal: " + err.Error(), gs.Game
+	}
+	if err := gs.Game.Move(move, nil); err != nil {
+		return "\u26A0 Illegal: " + err.Error(), gs.Game
+	}
+	fmt.Println("Ход совершен")
 	return strings.Repeat(" ", 80), gs.Game
 }

@@ -11,7 +11,9 @@ func TestDecodeMessage(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "valid move", json: `{"type":"move","move":"e4"}`, wantErr: false},
+		{name: "valid hello", json: `{"type":"hello","name":"Alice"}`, wantErr: false},
 		{name: "valid resign", json: `{"type":"resign"}`, wantErr: false},
+		{name: "hello without name", json: `{"type":"hello"}`, wantErr: true},
 		{name: "move without move field", json: `{"type":"move"}`, wantErr: true},
 		{name: "unknown type", json: `{"type":"go"}`, wantErr: true},
 		{name: "broken json", json: `{not json`, wantErr: true},

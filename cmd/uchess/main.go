@@ -1,13 +1,28 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
+	"time"
 
 	"github.com/corentings/chess/v2"
 	"github.com/gdamore/tcell/v2"
 	uchess "github.com/tmountain/uchess/pkg"
 )
+
+func postEvent(s tcell.Screen, ev tcell.Event) {
+	for {
+		err := s.PostEvent(ev)
+		if err == nil {
+			return
+		}
+		if !errors.Is(err, tcell.ErrEventQFull) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
 
 func main() {
 	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -123,6 +138,61 @@ func Interact(gs *uchess.GameState) bool {
 
 	// Process event
 	switch ev := ev.(type) {
+	case *tcell.EventInterrupt:
+		switch event := ev.Data().(type) {
+		case error:
+			if gs.Online.Enabled && !gs.Online.Connected {
+				gs.Online.Enabled = false
+				gs.Online.IsHost = false
+			}
+			log.Printf("online: %v", event)
+			uchess.DrawMsgLabel(gs.S, "\u26A0 Error: "+event.Error(), gs.Theme)
+			uchess.Render(gs)
+		case sessionEvent:
+			gs.Online.Session = event.session
+			gs.Online.Connected = true
+			gs.Online.Enabled = true
+			gs.Online.IsHost = event.isHost
+			if event.isHost {
+				gs.Online.LocalSide = chess.White
+				gs.Config.WhiteName = event.localName
+				gs.Config.BlackName = "Waiting for player..."
+				uchess.DrawMsgLabel(gs.S, "Connected. You are White; your move.", gs.Theme)
+			} else {
+				gs.Online.LocalSide = chess.Black
+				gs.Config.WhiteName = event.peerName
+				gs.Config.BlackName = event.localName
+				uchess.DrawMsgLabel(gs.S, "Connected. You are Black; waiting for White.", gs.Theme)
+			}
+			uchess.Render(gs)
+			listenNetwork(gs.S, event.session)
+		case networkEvent:
+			if event.err != nil {
+				log.Printf("online message: %v", event.err)
+				if event.connectionLost {
+					gs.Online.Connected = false
+					gs.Online.Enabled = false
+					gs.Online.Session = nil
+				}
+				uchess.DrawMsgLabel(gs.S, "\u26A0 Error: "+event.err.Error(), gs.Theme)
+				uchess.Render(gs)
+			} else {
+				switch event.message.Type {
+				case uchess.MsgHello:
+					if gs.Online.IsHost {
+						gs.Config.BlackName = event.message.Name
+					} else {
+						gs.Config.WhiteName = event.message.Name
+					}
+					uchess.Render(gs)
+				case uchess.MsgMove:
+					msg, gs.Game = uchess.ProcessMove(event.message.Move, gs)
+					setChecks(gs)
+					uchess.DrawMsgLabel(gs.S, msg, gs.Theme)
+					uchess.Render(gs)
+				}
+			}
+		}
 	case *tcell.EventKey:
 		switch ev.Key() {
 		// Quit the app
@@ -135,8 +205,13 @@ func Interact(gs *uchess.GameState) bool {
 			if isInteractive {
 				// Reset hints when new commands come through
 				gs.Hint = nil
+				input := gs.Input.Current()
+				moveCount := len(gs.Game.Moves())
 				// Attempt to process the command
-				msg, gs.Game = uchess.ProcessCmd(gs.Input.Current(), gs)
+				msg, gs.Game = uchess.ProcessCmd(input, gs)
+				if gs.Online.Connected && len(gs.Game.Moves()) == moveCount+1 {
+					sendMove(gs.S, gs.Online.Session, input)
+				}
 				// Set the check state in the event that a check happened
 				setChecks(gs)
 				uchess.DrawMsgLabel(gs.S, msg, gs.Theme)
@@ -183,7 +258,7 @@ func Interact(gs *uchess.GameState) bool {
 			}
 
 			// If the game is still in play, CPU takes move (if applicable)
-			if gs.Game.Outcome() == "*" && uchess.IsCPU(gs.Game.Position().Turn(), gs.Config) {
+			if !gs.Online.Enabled && gs.Game.Outcome() == "*" && uchess.IsCPU(gs.Game.Position().Turn(), gs.Config) {
 				uchess.DrawMsgLabel(gs.S, "Thinking...", gs.Theme)
 				// Render between moves to show the square that was chosen
 				uchess.Render(gs)

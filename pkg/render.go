@@ -3,6 +3,7 @@ package uchess
 import (
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/corentings/chess/v2"
@@ -22,6 +23,31 @@ func drawText(s tcell.Screen, x, y int, style tcell.Style, text string) {
 		s.SetContent(x, y, r, nil, style)
 		x++
 	}
+}
+
+func clearTextLine(s tcell.Screen, x, y int, style tcell.Style) {
+	width, _ := s.Size()
+	for col := x; col < width; col++ {
+		s.SetContent(col, y, ' ', nil, style)
+	}
+}
+
+func drawTextLine(s tcell.Screen, x, y int, style tcell.Style, text string) {
+	width, _ := s.Size()
+	if x >= width {
+		return
+	}
+	clearTextLine(s, x, y, style)
+	maxRunes := width - x
+	runes := []rune(text)
+	if len(runes) > maxRunes {
+		if maxRunes == 1 {
+			text = string(runes[:1])
+		} else {
+			text = string(runes[:maxRunes-1]) + "…"
+		}
+	}
+	drawText(s, x, y, style, text)
 }
 
 // drawRune places a rune at the specified coordinates with the provided style
@@ -90,33 +116,72 @@ func drawMoveLabel(s tcell.Screen, game *chess.Game, t Theme) {
 		nextPlayer = " White to Move "
 	}
 	labelStyle := tcell.StyleDefault.Background(t.MoveLabelBg).Foreground(t.MoveLabelFg)
-	drawText(s, leftMargin+2, topMargin-2, labelStyle, nextPlayer)
+	drawTextLine(s, leftMargin+2, topMargin-2, labelStyle, nextPlayer)
 }
 
 // DrawMsgLabel displays the current message from the command
 func DrawMsgLabel(s tcell.Screen, msg string, t Theme) {
 	topMargin := topMargin + 10
 	labelStyle := tcell.StyleDefault.Foreground(t.Msg)
-	drawText(s, leftMargin, topMargin, labelStyle, msg)
+	drawTextLine(s, leftMargin, topMargin, labelStyle, msg)
 }
 
 // drawPlayers displays the names of the players and their scores
 func drawPlayers(s tcell.Screen, config Config, game *chess.Game, t Theme) {
 	leftMargin := leftMargin + 22
-	emojiStyle := tcell.StyleDefault.Foreground(t.Emoji)
-	black := fmt.Sprintf("%v %v", EmojiForPlayer(config.BlackPiece), config.BlackName)
-	drawText(s, leftMargin, topMargin-2, emojiStyle, black)
-	white := fmt.Sprintf("%v %v", EmojiForPlayer(config.WhitePiece), config.WhiteName)
-	drawText(s, leftMargin, topMargin+8, emojiStyle, white)
+	nameStyle := tcell.StyleDefault.Foreground(t.Emoji)
+	drawPlayerName(s, leftMargin, topMargin-2, nameStyle, "Black", config.BlackName)
+	drawPlayerName(s, leftMargin, topMargin+8, nameStyle, "White", config.WhiteName)
 	fen := game.Position().String()
 	pos := strings.Split(fen, " ")
-	white, black = Advantages(pos[0])
+	whiteAdv, blackAdv := Advantages(pos[0])
 	whiteScore, blackScore := ScoreStr(pos[0])
-	blackRes := fmt.Sprintf("%v %-10v", black, blackScore)
+	blackRes := fmt.Sprintf("%v %-10v", blackAdv, blackScore)
 	advStyle := tcell.StyleDefault.Foreground(t.Advantage)
-	drawText(s, leftMargin, topMargin-1, advStyle, blackRes)
-	whiteRes := fmt.Sprintf("%v %-10v", white, whiteScore)
-	drawText(s, leftMargin, topMargin+7, advStyle, whiteRes)
+	drawTextLine(s, leftMargin, topMargin-1, advStyle, blackRes)
+	whiteRes := fmt.Sprintf("%v %-10v", whiteAdv, whiteScore)
+	drawTextLine(s, leftMargin, topMargin+7, advStyle, whiteRes)
+}
+
+func drawPlayerName(s tcell.Screen, x, y int, style tcell.Style, color, name string) {
+	label := playerLabel(color, name, screenWidthFrom(s, x))
+	if label != "" {
+		drawText(s, x, y, style, label)
+	}
+}
+
+func screenWidthFrom(s tcell.Screen, x int) int {
+	width, _ := s.Size()
+	return width - x
+}
+
+func playerLabel(color, name string, maxRunes int) string {
+	if maxRunes <= 0 {
+		return ""
+	}
+	name = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, strings.TrimSpace(name))
+	if name == "" {
+		name = "Player"
+	}
+	label := fmt.Sprintf("%s: %s", color, name)
+	runes := []rune(label)
+	if len(runes) > maxRunes {
+		if maxRunes == 1 {
+			label = string(runes[:1])
+		} else {
+			label = string(runes[:maxRunes-1]) + "…"
+		}
+	}
+	labelRunes := []rune(label)
+	if len(labelRunes) < maxRunes {
+		label += strings.Repeat(" ", maxRunes-len(labelRunes))
+	}
+	return label
 }
 
 // drawScore displays the current game score
@@ -135,8 +200,8 @@ func drawScore(s tcell.Screen, cp int, game *chess.Game, t Theme) {
 	} else {
 		status = fmt.Sprintf("%v (%v)", game.Outcome(), game.Method())
 	}
-	drawText(s, leftMargin, topMargin, scoreStyle, score)
-	drawText(s, leftMargin, topMargin+1, scoreStyle, status)
+	drawTextLine(s, leftMargin, topMargin, scoreStyle, score)
+	drawTextLine(s, leftMargin, topMargin+1, scoreStyle, status)
 }
 
 // Render draws the screen
@@ -194,11 +259,27 @@ func drawScoreMeter(s tcell.Screen, cp int, t Theme) {
 // drawPrompt draws the prompt
 func drawPrompt(s tcell.Screen, i *Input, t Theme) {
 	topMargin := topMargin + 11
+	clearTextLine(s, leftMargin, topMargin, DefStyle)
 	promptStyle := tcell.StyleDefault.Foreground(t.Prompt)
 	drawRune(s, leftMargin, topMargin, promptStyle, '❯')
 	inputStyle := tcell.StyleDefault.Foreground(t.Input)
-	drawText(s, leftMargin+2, topMargin, inputStyle, i.Current())
-	s.ShowCursor(leftMargin+2+i.Length(), topMargin)
+	inputX := leftMargin + 2
+	width, _ := s.Size()
+	input := i.Current()
+	maxRunes := width - inputX
+	if maxRunes < 0 {
+		maxRunes = 0
+	}
+	if len([]rune(input)) > maxRunes {
+		runes := []rune(input)
+		input = string(runes[:maxRunes])
+	}
+	drawText(s, inputX, topMargin, inputStyle, input)
+	cursorX := inputX + len([]rune(input))
+	if cursorX >= width {
+		cursorX = width - 1
+	}
+	s.ShowCursor(cursorX, topMargin)
 }
 
 // idxToRank converts an index to its corresponding rank string

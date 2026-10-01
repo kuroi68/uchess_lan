@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 const (
+	MsgHello  = "hello"
 	MsgMove   = "move"
 	MsgResign = "resign"
 )
@@ -14,6 +16,7 @@ const (
 type Message struct {
 	Type string `json:"type"`
 	Move string `json:"move,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 func EncodeMessage(msg Message) ([]byte, error) {
@@ -32,6 +35,10 @@ func DecodeMessage(data []byte) (Message, error) {
 	}
 
 	switch msg.Type {
+	case MsgHello:
+		if strings.TrimSpace(msg.Name) == "" {
+			return Message{}, errors.New("hello message without name")
+		}
 	case MsgMove:
 		if msg.Move == "" {
 			return Message{}, errors.New("move message without move")

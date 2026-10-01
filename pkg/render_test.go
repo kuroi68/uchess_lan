@@ -1,9 +1,11 @@
 package uchess
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/corentings/chess/v2"
+	"github.com/gdamore/tcell/v2"
 )
 
 func TestIdxToRankAndFileAndSquare(t *testing.T) {
@@ -25,6 +27,43 @@ func TestIdxToRankAndFileAndSquare(t *testing.T) {
 	}
 	if got := idxToSquare(7, 7); got != "h8" {
 		t.Fatalf("idxToSquare(7,7) = %q, want %q", got, "h8")
+	}
+}
+
+func TestPlayerLabelIsSideExplicitAndBounded(t *testing.T) {
+	got := playerLabel("Black", "A very long nickname", 18)
+	if !strings.HasPrefix(got, "Black: ") {
+		t.Fatalf("playerLabel() = %q, want explicit Black label", got)
+	}
+	if len([]rune(got)) != 18 {
+		t.Fatalf("playerLabel() rune length = %d, want 18", len([]rune(got)))
+	}
+
+	short := playerLabel("White", "Bob", 18)
+	if short != "White: Bob"+strings.Repeat(" ", 8) {
+		t.Fatalf("short playerLabel() = %q, want padded label", short)
+	}
+}
+
+func TestDrawTextLineClearsPreviousText(t *testing.T) {
+	screen := tcell.NewSimulationScreen("UTF-8")
+	if err := screen.Init(); err != nil {
+		t.Fatalf("failed to initialize simulation screen: %v", err)
+	}
+	defer screen.Fini()
+	screen.SetSize(24, 4)
+
+	style := tcell.StyleDefault
+	drawTextLine(screen, 0, 0, style, "Waiting for opponent...")
+	drawTextLine(screen, 0, 0, style, "Connected")
+
+	var got strings.Builder
+	for x := 0; x < 24; x++ {
+		r, _, _, _ := screen.GetContent(x, 0)
+		got.WriteRune(r)
+	}
+	if actual := strings.TrimRight(got.String(), " "); actual != "Connected" {
+		t.Fatalf("row after redraw = %q, want %q", actual, "Connected")
 	}
 }
 
@@ -112,5 +151,3 @@ func TestHintSqMatchesMoveEndpoints(t *testing.T) {
 		t.Fatalf("expected hintSq to be false for unrelated square \"a1\"")
 	}
 }
-
-
